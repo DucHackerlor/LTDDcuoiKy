@@ -1314,3 +1314,222 @@ Future<void> showActivityEditor(BuildContext context, TripStore s, Trip trip, Da
 }
 
 Future<void> showPackingEditor(BuildContext context, TripStore s, Trip trip) async {
+  final controller = TextEditingController();
+  final key = GlobalKey<FormState>();
+  try {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text(s.tr('Thêm đồ dùng', 'Add packing item')),
+        content: SizedBox(
+          width: 400,
+          child: Form(
+            key: key,
+            child: TextFormField(
+              controller: controller,
+              autofocus: true,
+              maxLength: 80,
+              decoration: InputDecoration(labelText: s.tr('Tên đồ dùng', 'Item name')),
+              validator: (v) => v == null || v.trim().isEmpty ? s.tr('Không được để trống', 'Required') : null,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(s.tr('Hủy', 'Cancel'))),
+          FilledButton(
+            onPressed: () {
+              if (!key.currentState!.validate()) return;
+              trip.packing.add(PackingItem(id: newId(), name: controller.text.trim()));
+              s.persist();
+              Navigator.pop(ctx);
+            },
+            child: Text(s.tr('Thêm', 'Add')),
+          ),
+        ],
+      ),
+    );
+  } finally {
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    controller.dispose();
+  }
+}
+
+
+class TeamPage extends StatelessWidget {
+  final TripStore store;
+  const TeamPage({super.key, required this.store});
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: Text(store.tr('Thông tin nhóm', 'Team information'))),
+        body: SafeArea(
+          child: PageWidth(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 27),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF06A65F), Color(0xFF28BB7D)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(28),
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 74,
+                        height: 74,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(.17),
+                          borderRadius: BorderRadius.circular(22),
+                        ),
+                        child: const Icon(Icons.groups_2_outlined,
+                            color: Colors.white, size: 40),
+                      ),
+                      const SizedBox(height: 15),
+                      const Text('TravelMate',
+                        style: TextStyle(fontSize: 29,
+                          fontWeight: FontWeight.w900, color: Colors.white)),
+                      const SizedBox(height: 7),
+                      Text(store.tr('Nhóm phát triển ứng dụng du lịch',
+                              'Travel planning application team'),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.white, fontSize: 15)),
+                      const SizedBox(height: 5),
+                      Text(store.tr('Môn Lập trình thiết bị di động',
+                              'Mobile Programming course'),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.white70)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 22),
+                Text(store.tr('Thành viên nhóm', 'Team members'),
+                    style: const TextStyle(fontSize: 22,
+                        fontWeight: FontWeight.w900, color: ink)),
+                const SizedBox(height: 6),
+                Text(store.tr('3 thành viên · Phân công công việc',
+                              '3 members · Task allocation'),
+                    style: const TextStyle(color: muted)),
+                const SizedBox(height: 14),
+                _memberCard(
+                  number: '01',
+                  name: 'Nguyễn Minh Đức',
+                  studentId: '24100430',
+                  role: store.tr('Lập trình chức năng, tích hợp ứng dụng và tham gia báo cáo',
+                    'Feature development, integration, and report contribution'),
+                  icon: Icons.code_rounded,
+                ),
+                const SizedBox(height: 12),
+                _memberCard(
+                  number: '02',
+                  name: 'Hoàng Quang Lâm',
+                  studentId: '24100302',
+                  role: store.tr('Lập trình giao diện, kiểm thử ứng dụng và tham gia báo cáo',
+                    'UI development, testing, and report contribution'),
+                  icon: Icons.palette_outlined,
+                ),
+                const SizedBox(height: 12),
+                _memberCard(
+                  number: '03',
+                  name: 'Nguyễn Yến Nhi',
+                  studentId: '24100372',
+                  role: store.tr('Lập trình tính năng, xây dựng tài liệu SRS/SAD và tham gia báo cáo',
+                    'Feature development, SRS/SAD documentation, and report contribution'),
+                  icon: Icons.description_outlined,
+                ),
+                const SizedBox(height: 18),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEAF8EF),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.school_outlined, color: Color(0xFF087A4A)),
+                      const SizedBox(width: 10),
+                      Expanded(child: Text(store.tr(
+                        'Tất cả thành viên cùng tham gia lập trình, viết báo cáo và chuẩn bị thuyết trình.',
+                        'All members contribute to coding, documentation and presentation preparation.'),
+                        style: const TextStyle(color: ink, height: 1.45))),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+  Widget _memberCard({
+    required String number,
+    required String name,
+    required String studentId,
+    required String role,
+    required IconData icon,
+  }) => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(17),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE6F8EE),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Icon(icon, color: const Color(0xFF06A65F), size: 25),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name, style: const TextStyle(fontSize: 17,
+                        fontWeight: FontWeight.w800, color: ink)),
+                    const SizedBox(height: 4),
+                    Text('${store.tr('Mã sinh viên', 'Student ID')}: $studentId',
+                        style: const TextStyle(color: muted, fontSize: 13)),
+                    const SizedBox(height: 8),
+                    Text(role, style: const TextStyle(color: ink, height: 1.4)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(number, style: const TextStyle(
+                  color: Color(0xFF06A65F), fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+      );
+}
+
+IconData activityCategoryIcon(String category) {
+  switch (category) {
+    case 'food': return Icons.restaurant_outlined;
+    case 'sightseeing': return Icons.landscape_outlined;
+    case 'transport': return Icons.directions_car_outlined;
+    case 'stay': return Icons.hotel_outlined;
+    case 'shopping': return Icons.shopping_bag_outlined;
+    default: return Icons.event_note_outlined;
+  }
+}
+
+String activityCategoryLabel(String category, TripStore store) {
+  switch (category) {
+    case 'food': return store.tr('Ăn uống', 'Food');
+    case 'sightseeing': return store.tr('Tham quan', 'Sightseeing');
+    case 'transport': return store.tr('Di chuyển', 'Transport');
+    case 'stay': return store.tr('Lưu trú', 'Accommodation');
+    case 'shopping': return store.tr('Mua sắm', 'Shopping');
+    default: return store.tr('Khác', 'Other');
+  }
+}
