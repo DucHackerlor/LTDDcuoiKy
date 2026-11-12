@@ -147,3 +147,152 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                           'Enter the Gmail and phone number used to register.'),
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: _muted, height: 1.4),
+                ),
+                const SizedBox(height: 20),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (!_verified) ...[
+                            TextFormField(
+                              key: const ValueKey('recovery-gmail'),
+                              controller: _gmail,
+                              keyboardType: TextInputType.emailAddress,
+                              textInputAction: TextInputAction.next,
+                              decoration: const InputDecoration(
+                                labelText: 'Gmail',
+                                hintText: 'ban@gmail.com',
+                                prefixIcon: Icon(Icons.alternate_email_rounded),
+                              ),
+                              validator: (value) => isValidGmail(value ?? '')
+                                  ? null
+                                  : s.tr('Nhập Gmail đúng định dạng @gmail.com.',
+                                      'Enter a valid @gmail.com address.'),
+                            ),
+                            const SizedBox(height: 13),
+                            TextFormField(
+                              key: const ValueKey('recovery-phone'),
+                              controller: _phone,
+                              keyboardType: TextInputType.phone,
+                              textInputAction: TextInputAction.done,
+                              onFieldSubmitted: (_) => _checkAccount(),
+                              inputFormatters: [FilteringTextInputFormatter.allow(
+                                RegExp(r'[0-9+ .\-]'),
+                              )],
+                              decoration: InputDecoration(
+                                labelText: s.tr('Số điện thoại', 'Phone number'),
+                                hintText: '0912345678',
+                                prefixIcon: const Icon(Icons.phone_outlined),
+                              ),
+                              validator: (value) => isValidPhone(value ?? '')
+                                  ? null
+                                  : s.tr('Nhập số điện thoại Việt Nam hợp lệ.',
+                                      'Enter a valid Vietnamese phone number.'),
+                            ),
+                          ] else ...[
+                            TextFormField(
+                              key: const ValueKey('recovery-new-password'),
+                              controller: _newPassword,
+                              obscureText: !_showPassword,
+                              textInputAction: TextInputAction.next,
+                              decoration: InputDecoration(
+                                labelText: s.tr('Mật khẩu mới', 'New password'),
+                                helperText: s.tr('6–64 ký tự, không có dấu cách',
+                                    '6–64 characters, no spaces'),
+                                prefixIcon: const Icon(Icons.lock_outline_rounded),
+                                suffixIcon: IconButton(
+                                  tooltip: _showPassword
+                                      ? s.tr('Ẩn mật khẩu', 'Hide password')
+                                      : s.tr('Hiện mật khẩu', 'Show password'),
+                                  onPressed: () => setState(
+                                      () => _showPassword = !_showPassword),
+                                  icon: Icon(_showPassword
+                                      ? Icons.visibility_off_outlined
+                                      : Icons.visibility_outlined),
+                                ),
+                              ),
+                              validator: (value) => isValidPassword(value ?? '')
+                                  ? null
+                                  : s.tr('Mật khẩu cần 6–64 ký tự, không có dấu cách.',
+                                      'Password must be 6–64 characters without spaces.'),
+                            ),
+                            const SizedBox(height: 13),
+                            TextFormField(
+                              key: const ValueKey('recovery-confirm-password'),
+                              controller: _confirmPassword,
+                              obscureText: !_showPassword,
+                              textInputAction: TextInputAction.done,
+                              onFieldSubmitted: (_) => _resetPassword(),
+                              decoration: InputDecoration(
+                                labelText: s.tr('Nhập lại mật khẩu mới',
+                                    'Confirm new password'),
+                                prefixIcon: const Icon(Icons.verified_user_outlined),
+                              ),
+                              validator: (value) => value == _newPassword.text
+                                  ? null
+                                  : s.tr('Hai mật khẩu chưa trùng nhau.',
+                                      'Passwords do not match.'),
+                            ),
+                          ],
+                          if (_errorMessage != null) ...[
+                            const SizedBox(height: 13),
+                            Text(_errorMessage!,
+                                style: const TextStyle(color: Colors.red)),
+                          ],
+                          const SizedBox(height: 18),
+                          FilledButton.icon(
+                            key: ValueKey(_verified
+                                ? 'recovery-reset-button'
+                                : 'recovery-verify-button'),
+                            onPressed: _busy
+                                ? null
+                                : (_verified ? _resetPassword : _checkAccount),
+                            icon: _busy
+                                ? const SizedBox(width: 17, height: 17,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: Colors.white,
+                                    ))
+                                : const Icon(Icons.arrow_forward_rounded),
+                            label: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 7),
+                              child: Text(_verified
+                                  ? s.tr('Đặt lại mật khẩu', 'Reset password')
+                                  : s.tr('Kiểm tra thông tin', 'Verify details')),
+                            ),
+                          ),
+                          if (_verified) ...[
+                            const SizedBox(height: 8),
+                            TextButton(
+                              onPressed: _busy ? null : () => setState(() {
+                                _verified = false;
+                                _errorMessage = null;
+                                _newPassword.clear();
+                                _confirmPassword.clear();
+                              }),
+                              child: Text(s.tr('Thay đổi Gmail / số điện thoại',
+                                  'Change Gmail / phone number')),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextButton.icon(
+                  onPressed: _busy ? null : () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  label: Text(s.tr('Quay lại đăng nhập', 'Back to sign in')),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
