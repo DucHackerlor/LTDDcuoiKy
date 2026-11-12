@@ -1,19 +1,23 @@
 name: travelmate
-description: "A new Flutter project."
-publish_to: 'none'
-version: 0.1.0+1
+description: Ứng dụng lập lịch trình du lịch Android và Web.
+publish_to: none
+version: 5.3.0+9
 
 environment:
-  sdk: ^3.13.5
+  sdk: '>=3.3.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  shared_preferences: ^2.3.2
+  crypto: ^3.0.3
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^6.0.0
+  flutter_lints: ^4.0.0
 
 flutter:
   uses-material-design: true
