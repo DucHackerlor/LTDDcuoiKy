@@ -129,3 +129,134 @@ class WebPhoneViewport extends StatelessWidget {
                                     );
                                   },
                                 ),
+                              ),
+                              const SizedBox(
+                                key: ValueKey('web-phone-gesture-bar'),
+                                height: _gestureBarHeight,
+                                child: _PhoneGestureBar(),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _AmbientGlow extends StatelessWidget {
+  final double size;
+  final Color color;
+
+  const _AmbientGlow({required this.size, required this.color});
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(
+              colors: [color, color.withAlpha(0)],
+            ),
+          ),
+        ),
+      );
+}
+
+class _PhoneStatusBar extends StatelessWidget {
+  const _PhoneStatusBar();
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final clock = '${now.hour.toString().padLeft(2, '0')}:'
+        '${now.minute.toString().padLeft(2, '0')}';
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Positioned(
+          top: 19,
+          left: 27,
+          child: Text(
+            clock,
+            style: const TextStyle(
+              color: Color(0xFF172C27),
+              fontSize: 14,
+              letterSpacing: .2,
+              fontWeight: FontWeight.w800,
+              decoration: TextDecoration.none,
+            ),
+          ),
+        ),
+        Align(
+          alignment: const Alignment(0, -0.30),
+          child: Container(
+            width: 112,
+            height: 29,
+            decoration: BoxDecoration(
+              color: const Color(0xFF101516),
+              borderRadius: BorderRadius.circular(22),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color(0xFF243B44),
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
+            ),
+          ),
+        ),
+        const Positioned(
+          top: 19,
+          right: 21,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.signal_cellular_alt_rounded, size: 15, color: Color(0xFF172C27)),
+              SizedBox(width: 3),
+              Icon(Icons.wifi_rounded, size: 16, color: Color(0xFF172C27)),
+              SizedBox(width: 3),
+              Icon(Icons.battery_full_rounded, size: 18, color: Color(0xFF172C27)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PhoneGestureBar extends StatelessWidget {
+  const _PhoneGestureBar();
+
+  @override
+  Widget build(BuildContext context) => Center(
+        child: Container(
+          width: 110,
+          height: 5,
+          decoration: BoxDecoration(
+            color: const Color(0xFF23352D),
+            borderRadius: BorderRadius.circular(6),
+          ),
+        ),
+      );
+}
