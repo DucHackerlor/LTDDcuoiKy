@@ -656,3 +656,222 @@ Future<void> showTripEditor(BuildContext context, TripStore s, [Trip? trip]) asy
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    TextFormField(
+                      controller: name,
+                      maxLength: 65,
+                      decoration: InputDecoration(labelText: s.tr('Tên chuyến đi', 'Trip name')),
+                      validator: (v) => v == null || v.trim().isEmpty ? s.tr('Không được để trống', 'Required') : null,
+                    ),
+                    const SizedBox(height: 10),
+                    TextFormField(
+                      controller: destination,
+                      maxLength: 80,
+                      decoration: InputDecoration(labelText: s.tr('Điểm đến', 'Destination')),
+                      validator: (v) => v == null || v.trim().isEmpty ? s.tr('Không được để trống', 'Required') : null,
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.date_range_outlined),
+                      label: Text('${formatDate(range.start)} – ${formatDate(range.end)}'),
+                      onPressed: () async {
+                        final picked = await showDateRangePicker(
+                          context: ctx,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2100),
+                          initialDateRange: range,
+                        );
+                        if (picked != null) setLocal(() => range = picked);
+                      },
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      s.tr('Lịch trình tối đa 60 ngày', 'Maximum 60 days per trip'),
+                      style: const TextStyle(fontSize: 12, color: muted),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(s.tr('Hủy', 'Cancel'))),
+            FilledButton(
+              onPressed: () {
+                if (!key.currentState!.validate()) return;
+                if (range.duration.inDays > 59) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(s.tr('Chuyến đi tối đa 60 ngày', 'Maximum 60 days'))),
+                  );
+                  return;
+                }
+                if (trip == null) {
+                  s.trips.add(
+                    Trip(
+                      id: newId(),
+                      name: name.text.trim(),
+                      destination: destination.text.trim(),
+                      start: range.start,
+                      end: range.end,
+                    ),
+                  );
+                } else {
+                  trip.name = name.text.trim();
+                  trip.destination = destination.text.trim();
+                  trip.start = range.start;
+                  trip.end = range.end;
+                  trip.activities.removeWhere(
+                    (a) => dateOnly(a.at).isBefore(range.start) || dateOnly(a.at).isAfter(range.end),
+                  );
+                }
+                s.persist();
+                Navigator.pop(ctx);
+              },
+              child: Text(s.tr('Lưu', 'Save')),
+            ),
+          ],
+        ),
+      ),
+    );
+  } finally {
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    name.dispose();
+    destination.dispose();
+  }
+}
+
+class TripPage extends StatefulWidget {
+  final TripStore store;
+  final Trip trip;
+  const TripPage({super.key, required this.store, required this.trip});
+
+  @override
+  State<TripPage> createState() => _TripPageState();
+}
+
+class _TripPageState extends State<TripPage> {
+  int section = 0;
+  late DateTime day;
+
+  @override
+  void initState() {
+    super.initState();
+    day = dateOnly(widget.trip.start);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.store;
+    final trip = widget.trip;
+    if (day.isBefore(dateOnly(trip.start)) || day.isAfter(dateOnly(trip.end))) {
+      day = dateOnly(trip.start);
+    }
+    final events = activitiesOn(trip, day);
+    final packedTotal = trip.packing.length;
+    final packedDone = trip.preparedCount;
+    final packedProgress = packedTotal == 0 ? 0.0 : packedDone / packedTotal;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(trip.name, overflow: TextOverflow.ellipsis),
+        actions: [
+          IconButton(
+            tooltip: s.tr('Sửa', 'Edit'),
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: () async {
+              await showTripEditor(context, s, trip);
+              if (mounted) setState(() {});
+            },
+          ),
+          IconButton(
+            tooltip: s.tr('Nhân bản chuyến đi', 'Duplicate trip'),
+            icon: const Icon(Icons.content_copy_outlined),
+            onPressed: () async {
+              final cloned = Trip(
+                id: newId(), name: '${trip.name} (${s.tr('bản sao', 'copy')})',
+                destination: trip.destination, start: trip.start, end: trip.end,
+                activities: trip.activities.map((a) => Activity(id: newId(),
+                  title: a.title, at: a.at, location: a.location,
+                  notes: a.notes, category: a.category)).toList(),
+                packing: trip.packing.map((p) => PackingItem(
+                  id: newId(), name: p.name, done: p.done)).toList(),
+                plannedCosts: Map<String, int>.from(trip.plannedCosts),
+              );
+              s.trips.add(cloned);
+              await s.persist();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(s.tr('Đã nhân bản chuyến đi.', 'Trip duplicated.'))));
+              }
+            },
+          ),
+          IconButton(
+            tooltip: s.tr('Xóa chuyến đi', 'Delete trip'),
+            icon: const Icon(Icons.delete_outline),
+            onPressed: () async {
+              if (await askDelete(context, s)) {
+                s.trips.removeWhere((x) => x.id == trip.id);
+                await s.persist();
+                if (context.mounted) Navigator.pop(context);
+              }
+            },
+          ),
+          const SizedBox(width: 4),
+        ],
+      ),
+      body: SafeArea(
+        child: PageWidth(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(17, 8, 17, 110),
+            children: [
+              Container(
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  gradient: paletteFor(trip.destination).gradient,
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: [
+                    BoxShadow(
+                      color: paletteFor(trip.destination).shadow,
+                      blurRadius: 26,
+                      offset: const Offset(0, 12),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 54,
+                          height: 54,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(.16),
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: Center(child: Text(emojiForDestination('${trip.destination} ${trip.name}'), style: const TextStyle(fontSize: 28, height: 1))),
+                        ),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(.16),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Text(
+                            '${trip.dayCount} ${s.tr('ngày', 'days')}',
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      trip.destination,
+                      style: const TextStyle(
+                        fontSize: 27,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
