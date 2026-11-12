@@ -307,3 +307,157 @@ class _AuthPageState extends State<AuthPage> {
                     padding: const EdgeInsets.all(18),
                     child: Form(
                       key: _form,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (_register) ...[
+                            TextFormField(
+                              key: const ValueKey('register-gmail'),
+                              controller: _gmail,
+                              keyboardType: TextInputType.emailAddress,
+                              textInputAction: TextInputAction.next,
+                              decoration: InputDecoration(
+                                prefixIcon: const Icon(Icons.alternate_email_rounded),
+                                labelText: 'Gmail',
+                                hintText: 'ban@gmail.com',
+                              ),
+                              validator: (v) => isValidGmail(v ?? '') ? null
+                                  : s.tr('Nhập Gmail đúng định dạng @gmail.com.',
+                                      'Enter a valid @gmail.com address.'),
+                            ),
+                            const SizedBox(height: 13),
+                            TextFormField(
+                              key: const ValueKey('register-phone'),
+                              controller: _phone,
+                              keyboardType: TextInputType.phone,
+                              textInputAction: TextInputAction.next,
+                              inputFormatters: [FilteringTextInputFormatter.allow(
+                                  RegExp(r'[0-9+ .\-]'))],
+                              decoration: InputDecoration(
+                                prefixIcon: const Icon(Icons.phone_outlined),
+                                labelText: s.tr('Số điện thoại', 'Phone number'),
+                                hintText: '0912345678',
+                              ),
+                              validator: (v) => isValidPhone(v ?? '') ? null
+                                  : s.tr('Nhập SĐT Việt Nam hợp lệ (0... hoặc +84...).',
+                                      'Enter a valid Vietnamese phone number.'),
+                            ),
+                            const SizedBox(height: 13),
+                          ] else ...[
+                            TextFormField(
+                              key: const ValueKey('login-identifier'),
+                              controller: _identifier,
+                              keyboardType: TextInputType.emailAddress,
+                              textInputAction: TextInputAction.next,
+                              decoration: InputDecoration(
+                                prefixIcon: const Icon(Icons.person_outline_rounded),
+                                labelText: s.tr('Gmail hoặc số điện thoại',
+                                    'Gmail or phone number'),
+                                hintText: 'ban@gmail.com',
+                              ),
+                              validator: (v) => isValidGmail(v ?? '') || isValidPhone(v ?? '')
+                                  ? null : s.tr('Nhập Gmail hoặc số điện thoại hợp lệ.',
+                                      'Enter a valid Gmail or phone number.'),
+                            ),
+                            const SizedBox(height: 13),
+                          ],
+                          TextFormField(
+                            key: ValueKey(_register ? 'register-password' : 'login-password'),
+                            controller: _password,
+                            obscureText: !_showPassword,
+                            keyboardType: TextInputType.visiblePassword,
+                            textInputAction: TextInputAction.done,
+                            onFieldSubmitted: (_) => _submit(),
+                            decoration: InputDecoration(
+                              prefixIcon: const Icon(Icons.lock_outline_rounded),
+                              labelText: s.tr('Mật khẩu', 'Password'),
+                              helperText: _register
+                                  ? s.tr('6–64 ký tự, không có dấu cách',
+                                      '6–64 characters, no spaces')
+                                  : null,
+                              suffixIcon: IconButton(
+                                tooltip: _showPassword
+                                    ? s.tr('Ẩn mật khẩu', 'Hide password')
+                                    : s.tr('Hiện mật khẩu', 'Show password'),
+                                onPressed: () => setState(() => _showPassword = !_showPassword),
+                                icon: Icon(_showPassword
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined),
+                              ),
+                            ),
+                            validator: (v) => isValidPassword(v ?? '') ? null
+                                : s.tr('Mật khẩu cần 6–64 ký tự, không có dấu cách.',
+                                    'Password must be 6–64 characters without spaces.'),
+                          ),
+                          if (!_register)
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                key: const ValueKey('forgot-password-link'),
+                                onPressed: _submitting ? null : _openForgotPassword,
+                                child: Text(s.tr('Quên mật khẩu?', 'Forgot password?')),
+                              ),
+                            ),
+                          if (_errorMessage != null) ...[
+                            const SizedBox(height: 13),
+                            Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+                          ],
+                          const SizedBox(height: 18),
+                          FilledButton.icon(
+                            onPressed: _submitting ? null : _submit,
+                            icon: _submitting
+                                ? const SizedBox(width: 17, height: 17,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2, color: Colors.white))
+                                : const Icon(Icons.arrow_forward_rounded),
+                            label: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 7),
+                              child: Text(_register
+                                  ? s.tr('Đăng ký tài khoản', 'Create account')
+                                  : s.tr('Đăng nhập', 'Sign in')),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  const Icon(Icons.explore_outlined, color: _green, size: 18),
+                  const SizedBox(width: 8),
+                  Flexible(child: Text(s.tr('Khám phá nhiều hơn, lo ít hơn.',
+                      'Explore more, worry less.'),
+                      style: const TextStyle(color: _muted),
+                      textAlign: TextAlign.center)),
+                ]),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _modeButton(String text, bool mode) {
+    final active = _register == mode;
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: () => _switchMode(mode),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 4),
+        decoration: BoxDecoration(
+          color: active ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: active
+              ? const [BoxShadow(color: Color(0x10000000), blurRadius: 9)]
+              : null,
+        ),
+        child: Text(text, textAlign: TextAlign.center,
+          style: TextStyle(fontWeight: FontWeight.w800,
+              color: active ? _dark : _muted)),
+      ),
+    );
+  }
+}
