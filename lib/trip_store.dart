@@ -112,3 +112,117 @@ class TripStore extends ChangeNotifier {
       gmail: email,
       phone: number,
       salt: salt,
+      passwordDigest: _digest(password, salt),
+    );
+    final prefs = await SharedPreferences.getInstance();
+    final updated = [..._accounts, account];
+    final savedAccounts = await prefs.setString(
+      _accountsKey,
+      jsonEncode(updated.map((a) => a.toJson()).toList()),
+    );
+    if (!savedAccounts) throw const LocalAccountException('save_failed');
+    _accounts.add(account);
+    final cleared = await prefs.remove(_sessionKey);
+    if (!cleared) throw const LocalAccountException('save_failed');
+    currentUser = null;
+    notifyListeners();
+  }
+
+  Future<void> signInLocal({
+    required String identifier,
+    required String password,
+  }) async {
+    final input = identifier.trim().toLowerCase();
+    final phone = normalizePhone(input);
+    LocalAccount? account;
+    for (final candidate in _accounts) {
+      if (candidate.gmail == input || candidate.phone == phone) {
+        account = candidate;
+        break;
+      }
+    }
+    if (account == null ||
+        !isValidPassword(password) ||
+        _digest(password, account.salt) != account.passwordDigest) {
+      throw const LocalAccountException('invalid_credentials');
+    }
+    final prefs = await SharedPreferences.getInstance();
+    final saved = await prefs.setString(_sessionKey, account.gmail);
+    if (!saved) throw const LocalAccountException('save_failed');
+    currentUser = account.gmail;
+    notifyListeners();
+  }
+
+  LocalAccount _recoveryAccount({
+    required String gmail,
+    required String phone,
+  }) {
+    final email = gmail.trim().toLowerCase();
+    final number = normalizePhone(phone);
+    if (!isValidGmail(email)) {
+      throw const LocalAccountException('invalid_gmail');
+    }
+    if (!isValidPhone(number)) {
+      throw const LocalAccountException('invalid_phone');
+    }
+    for (final account in _accounts) {
+      if (account.gmail == email && account.phone == number) return account;
+    }
+    throw const LocalAccountException('recovery_not_found');
+  }
+
+  bool verifyRecoveryDetails({required String gmail, required String phone}) {
+    _recoveryAccount(gmail: gmail, phone: phone);
+    return true;
+  }
+
+  Future<void> resetPasswordLocal({
+    required String gmail,
+    required String phone,
+    required String newPassword,
+  }) async {
+    final account = _recoveryAccount(gmail: gmail, phone: phone);
+    if (!isValidPassword(newPassword)) {
+      throw const LocalAccountException('invalid_password');
+    }
+
+    final salt = _newSalt();
+    final updatedAccount = LocalAccount(
+      gmail: account.gmail,
+      phone: account.phone,
+      salt: salt,
+      passwordDigest: _digest(newPassword, salt),
+    );
+    final index = _accounts.indexOf(account);
+    final updatedAccounts = [..._accounts];
+    updatedAccounts[index] = updatedAccount;
+
+    final prefs = await SharedPreferences.getInstance();
+    final saved = await prefs.setString(
+      _accountsKey,
+      jsonEncode(updatedAccounts.map((a) => a.toJson()).toList()),
+    );
+    if (!saved) throw const LocalAccountException('save_failed');
+    _accounts[index] = updatedAccount;
+
+    if (currentUser == account.gmail) {
+      await prefs.remove(_sessionKey);
+      currentUser = null;
+    }
+    notifyListeners();
+  }
+
+  Future<void> signOutLocal() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_sessionKey);
+    await prefs.remove('travelmate_local_user');
+    await prefs.remove('travelmate_demo_user');
+    currentUser = null;
+    notifyListeners();
+  }
+
+  Future<void> setEnglish(bool value) async {
+    english = value;
+    await persist();
+  }
+}
