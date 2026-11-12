@@ -437,3 +437,222 @@ class _HomePageState extends State<HomePage> {
               }
               return LayoutBuilder(builder: (context, constraints) {
                 final wide = constraints.maxWidth >= 700;
+                return GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: matches.length,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: wide ? 2 : 1,
+                    mainAxisSpacing: 14,
+                    crossAxisSpacing: 14,
+                    mainAxisExtent: 288,
+                  ),
+                  itemBuilder: (context, i) {
+                    final trip = matches[i];
+                    return PopIn(index: i, child: _TripCard(
+                      store: s, trip: trip,
+                      onTap: () => Navigator.push(context,
+                        MaterialPageRoute<void>(builder: (_) => TripPage(store: s, trip: trip))),
+                    ));
+                  },
+                );
+              });
+            }),
+        ],
+      );
+
+
+}
+
+class _TripCard extends StatelessWidget {
+  final TripStore store;
+  final Trip trip;
+  final VoidCallback onTap;
+
+  const _TripCard({required this.store, required this.trip, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final packedTotal = trip.packing.length;
+    final packedDone = trip.preparedCount;
+    final progress = packedTotal == 0 ? 0.0 : packedDone / packedTotal;
+    final allPacked = packedTotal > 0 && packedDone == packedTotal;
+    final pal = paletteFor(trip.destination);
+    final emoji = emojiForDestination('${trip.destination} ${trip.name}');
+
+    return Pressable(
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(18, 14, 14, 14),
+                decoration: BoxDecoration(gradient: pal.gradient),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            trip.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 19,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '📍 ${trip.destination}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    EmojiBadge(emoji: emoji, size: 58, color: Colors.white24, angle: .1),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _softBadge('📅 ${formatDate(trip.start)} – ${formatDate(trip.end)}', pal.soft),
+                        _softBadge('🌙 ${trip.dayCount} ${store.tr('ngày', 'days')}', pal.soft),
+                        _softBadge('📝 ${trip.activities.length} ${store.tr('hoạt động', 'activities')}', pal.soft),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Text(
+                          '🎒 ${store.tr('Đồ chuẩn bị', 'Packing')}',
+                          style: const TextStyle(fontWeight: FontWeight.w800, color: ink),
+                        ),
+                        const Spacer(),
+                        Text(
+                          allPacked ? '$packedDone/$packedTotal 🎉' : '$packedDone/$packedTotal',
+                          style: const TextStyle(color: muted, fontWeight: FontWeight.w700),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: LinearProgressIndicator(
+                        minHeight: 10,
+                        value: progress,
+                        backgroundColor: pal.soft,
+                        valueColor: AlwaysStoppedAnimation<Color>(pal.b),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _softBadge(String text, Color bg) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(text, style: const TextStyle(fontSize: 12.5, color: ink, fontWeight: FontWeight.w700)),
+      );
+}
+
+class ErrorStrip extends StatelessWidget {
+  final String message;
+  const ErrorStrip({super.key, required this.message});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        margin: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF2F2),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFFFD5D5)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.redAccent),
+            const SizedBox(width: 10),
+            Expanded(child: Text(message, style: const TextStyle(color: Colors.redAccent))),
+          ],
+        ),
+      );
+}
+
+Future<bool> askDelete(BuildContext context, TripStore s) async =>
+    await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            title: Text(s.tr('Xác nhận xóa', 'Confirm deletion')),
+            content: Text(
+              s.tr(
+                'Bạn có chắc muốn xóa? Hành động này không thể hoàn tác.',
+                'Are you sure? This cannot be undone.',
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(s.tr('Hủy', 'Cancel')),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(s.tr('Xóa', 'Delete')),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+Future<void> showTripEditor(BuildContext context, TripStore s, [Trip? trip]) async {
+  final name = TextEditingController(text: trip?.name ?? '');
+  final destination = TextEditingController(text: trip?.destination ?? '');
+  DateTimeRange range = DateTimeRange(
+    start: dateOnly(trip?.start ?? DateTime.now()),
+    end: dateOnly(trip?.end ?? DateTime.now().add(const Duration(days: 2))),
+  );
+  final key = GlobalKey<FormState>();
+  try {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Text(trip == null ? s.tr('Tạo chuyến đi', 'New trip') : s.tr('Sửa chuyến đi', 'Edit trip')),
+          content: SizedBox(
+            width: 430,
+            child: SingleChildScrollView(
+              child: Form(
+                key: key,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
