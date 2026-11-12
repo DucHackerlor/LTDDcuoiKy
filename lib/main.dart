@@ -1094,3 +1094,223 @@ class _TripPageState extends State<TripPage> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      );
+}
+
+class _ActivityCard extends StatelessWidget {
+  final TripStore store;
+  final Activity activity;
+  final VoidCallback onTap;
+  final Future<void> Function() onDelete;
+
+  const _ActivityCard({
+    required this.store,
+    required this.activity,
+    required this.onTap,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final subtitle = [
+      if (activity.location.isNotEmpty) '📍 ${activity.location}',
+      if (activity.notes.isNotEmpty) activity.notes,
+    ].join('\n');
+
+    final tone = activityTone(activity.category);
+
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(26),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 64,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                decoration: BoxDecoration(
+                  color: tone.withAlpha(34),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(activityEmoji(activity.category), style: const TextStyle(fontSize: 22, height: 1)),
+                    const SizedBox(height: 6),
+                    Text(
+                      formatTime(activity.at),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: deepTeal,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      activity.title,
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: ink),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(activityCategoryLabel(activity.category, store),
+                      style: TextStyle(fontSize: 11.5, color: tone, fontWeight: FontWeight.w800)),
+                    if (subtitle.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(subtitle, style: const TextStyle(color: muted, height: 1.4)),
+                    ],
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: store.tr('Xóa', 'Delete'),
+                onPressed: () => onDelete(),
+                icon: const Icon(Icons.delete_outline),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class EmptyCard extends StatelessWidget {
+  final String text;
+  const EmptyCard({super.key, required this.text});
+
+  @override
+  Widget build(BuildContext context) => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('🌤️', style: TextStyle(fontSize: 34)),
+                const SizedBox(height: 8),
+                Text(text, textAlign: TextAlign.center, style: const TextStyle(color: muted)),
+              ],
+            ),
+          ),
+        ),
+      );
+}
+
+Future<void> showActivityEditor(BuildContext context, TripStore s, Trip trip, DateTime day, {Activity? existing}) async {
+  final title = TextEditingController(text: existing?.title ?? '');
+  final location = TextEditingController(text: existing?.location ?? '');
+  final notes = TextEditingController(text: existing?.notes ?? '');
+  final key = GlobalKey<FormState>();
+  TimeOfDay time = existing == null ? const TimeOfDay(hour: 9, minute: 0) : TimeOfDay.fromDateTime(existing.at);
+  String category = existing?.category ?? 'other';
+  try {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, local) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Text(existing == null ? s.tr('Thêm hoạt động', 'Add activity') : s.tr('Sửa hoạt động', 'Edit activity')),
+          content: SizedBox(
+            width: 430,
+            child: SingleChildScrollView(
+              child: Form(
+                key: key,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: title,
+                      maxLength: 80,
+                      decoration: InputDecoration(labelText: s.tr('Hoạt động', 'Activity')),
+                      validator: (v) => v == null || v.trim().isEmpty ? s.tr('Không được để trống', 'Required') : null,
+                    ),
+                    const SizedBox(height: 10),
+                    TextFormField(
+                      controller: location,
+                      maxLength: 100,
+                      decoration: InputDecoration(labelText: s.tr('Địa điểm', 'Location')),
+                    ),
+                    const SizedBox(height: 10),
+                    TextFormField(
+                      controller: notes,
+                      maxLines: 2,
+                      maxLength: 300,
+                      decoration: InputDecoration(labelText: s.tr('Ghi chú', 'Notes')),
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      value: category,
+                      decoration: InputDecoration(labelText: s.tr('Loại hoạt động', 'Activity category')),
+                      items: ['other', 'food', 'sightseeing', 'transport', 'stay', 'shopping']
+                        .map((c) => DropdownMenuItem(value: c,
+                          child: Text(activityCategoryLabel(c, s)))).toList(),
+                      onChanged: (value) { if (value != null) local(() => category = value); },
+                    ),
+                    const SizedBox(height: 10),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.schedule),
+                      label: Text(time.format(ctx)),
+                      onPressed: () async {
+                        final chosen = await showTimePicker(context: ctx, initialTime: time);
+                        if (chosen != null) local(() => time = chosen);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(s.tr('Hủy', 'Cancel'))),
+            FilledButton(
+              onPressed: () {
+                if (!key.currentState!.validate()) return;
+                final at = DateTime(day.year, day.month, day.day, time.hour, time.minute);
+                if (existing == null) {
+                  trip.activities.add(
+                    Activity(
+                      id: newId(),
+                      title: title.text.trim(),
+                      location: location.text.trim(),
+                      notes: notes.text.trim(),
+                      at: at, category: category,
+                    ),
+                  );
+                } else {
+                  existing.title = title.text.trim();
+                  existing.location = location.text.trim();
+                  existing.notes = notes.text.trim();
+                  existing.category = category;
+                  existing.at = at;
+                }
+                s.persist();
+                Navigator.pop(ctx);
+              },
+              child: Text(s.tr('Lưu', 'Save')),
+            ),
+          ],
+        ),
+      ),
+    );
+  } finally {
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    title.dispose();
+    location.dispose();
+    notes.dispose();
+  }
+}
+
+Future<void> showPackingEditor(BuildContext context, TripStore s, Trip trip) async {
