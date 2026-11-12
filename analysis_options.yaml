@@ -1,7 +1,5 @@
 include: package:flutter_lints/flutter.yaml
-
 analyzer:
-  exclude:
-    - build/**
-    - android/**
-    - web/**
+  errors:
+    invalid_assignment: error
+    missing_required_argument: error
