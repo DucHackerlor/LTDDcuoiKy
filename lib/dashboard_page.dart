@@ -191,3 +191,196 @@ class _Banner extends StatelessWidget {
                   color: Colors.white, height: 1.12)),
             const SizedBox(height: 8),
             Text(store.tr('Lịch trình của bạn, theo cách của bạn.',
+              'Your adventure, your way.'),
+              style: const TextStyle(color: Colors.white, fontSize: 13)),
+            const SizedBox(height: 16),
+            Pressable(
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(backgroundColor: sunYellow,
+                  foregroundColor: _dark, elevation: 4,
+                  shadowColor: const Color(0x66000000),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12)),
+                onPressed: onCreate,
+                icon: const Icon(Icons.rocket_launch_rounded, size: 19),
+                label: Text(store.tr('Bắt đầu ngay', 'Start planning')),
+              ),
+            ),
+          ]),
+        ),
+      ]),
+    ),
+  );
+}
+
+class _QuickAction extends StatelessWidget {
+  final String emoji;
+  final String title;
+  final FunPalette palette;
+  final VoidCallback onTap;
+  const _QuickAction({required this.emoji, required this.title,
+    required this.palette, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => Pressable(
+    child: Material(
+      color: palette.soft,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+      child: InkWell(
+        customBorder: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Container(
+              width: 56, height: 56, alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [BoxShadow(color: palette.shadow, blurRadius: 12, offset: const Offset(0, 5))],
+              ),
+              child: Text(emoji, style: const TextStyle(fontSize: 28, height: 1)),
+            ),
+            const SizedBox(height: 10),
+            Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
+              style: const TextStyle(color: _dark, fontSize: 12,
+                  fontWeight: FontWeight.w800, height: 1.3)),
+          ]),
+        ),
+      ),
+    ),
+  );
+}
+
+class _UpcomingCard extends StatelessWidget {
+  final Trip trip;
+  final TripStore store;
+  final VoidCallback onTap;
+  const _UpcomingCard({required this.trip, required this.store, required this.onTap});
+
+  String _countdown() {
+    final today = dateOnly(DateTime.now());
+    final start = dateOnly(trip.start);
+    final end = dateOnly(trip.end);
+    if (!today.isBefore(start) && !today.isAfter(end)) {
+      return store.tr('Đang diễn ra 🔥', 'Happening now 🔥');
+    }
+    final days = start.difference(today).inDays;
+    if (days <= 1) return store.tr('Ngày mai bay! 🎉', 'Tomorrow! 🎉');
+    return store.tr('Còn $days ngày ⏳', '$days days to go ⏳');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pal = paletteFor(trip.destination);
+    return Pressable(
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Container(
+              height: 7,
+              decoration: BoxDecoration(gradient: pal.gradient),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  EmojiBadge(
+                    emoji: emojiForDestination('${trip.destination} ${trip.name}'),
+                    size: 56, color: pal.soft, angle: -.08),
+                  const SizedBox(width: 13),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(trip.name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: _dark)),
+                    const SizedBox(height: 4),
+                    Text('📍 ${trip.destination}', maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: _muted)),
+                  ])),
+                  Icon(Icons.arrow_circle_right_rounded, size: 28, color: pal.b),
+                ]),
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: sunSoft, borderRadius: BorderRadius.circular(20)),
+                  child: Text(_countdown(),
+                    style: const TextStyle(fontWeight: FontWeight.w900, color: _dark, fontSize: 13)),
+                ),
+                const SizedBox(height: 14),
+                Wrap(spacing: 14, runSpacing: 7, children: [
+                  _detail('📅', '${formatDate(trip.start)} – ${formatDate(trip.end)}'),
+                  _detail('📝', '${trip.activities.length} ${store.tr('hoạt động', 'activities')}'),
+                  _detail('🎒', '${trip.preparedCount}/${trip.packing.length} ${store.tr('đã chuẩn bị', 'packed')}'),
+                ]),
+              ]),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _detail(String emoji, String label) => Row(mainAxisSize: MainAxisSize.min, children: [
+    Text(emoji, style: const TextStyle(fontSize: 14)), const SizedBox(width: 5),
+    Text(label, style: const TextStyle(fontSize: 12.5, color: _muted, fontWeight: FontWeight.w600)),
+  ]);
+}
+
+class _InspirationCard extends StatelessWidget {
+  final TripStore store;
+  final VoidCallback onExplore;
+  const _InspirationCard({required this.store, required this.onExplore});
+
+  @override
+  Widget build(BuildContext context) => Pressable(
+    child: Material(
+      color: sunSoft,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+      child: InkWell(
+        customBorder: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+        onTap: onExplore,
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Row(children: [
+            const EmojiBadge(emoji: '🏝️', size: 60, color: Colors.white, angle: -.1),
+            const SizedBox(width: 14),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(store.tr('Chưa biết đi đâu?', 'Need a destination?'),
+                style: const TextStyle(color: _dark, fontSize: 16, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 5),
+              Text(store.tr('Thử lịch trình mẫu và sửa theo sở thích của bạn.',
+                'Start with a template and make it yours.'),
+                style: const TextStyle(color: Color(0xFF6B5A1E), fontSize: 13, height: 1.35)),
+            ])),
+            const Icon(Icons.arrow_forward_rounded, color: _dark, size: 22),
+          ]),
+        ),
+      ),
+    ),
+  );
+}
+
+class _EmptyJourney extends StatelessWidget {
+  final TripStore store;
+  final VoidCallback onCreate;
+  const _EmptyJourney({required this.store, required this.onCreate});
+
+  @override
+  Widget build(BuildContext context) => Card(child: Padding(
+    padding: const EdgeInsets.all(20),
+    child: Row(children: [
+      const EmojiBadge(emoji: '🧳', size: 58, color: sunSoft, angle: -.08),
+      const SizedBox(width: 15),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(store.tr('Chưa có hành trình nào', 'No journeys yet'),
+          style: const TextStyle(color: _dark, fontSize: 16, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 6),
+        Text(store.tr('Tạo chuyến đi đầu tiên để bắt đầu.', 'Create your first trip to start.'),
+          style: const TextStyle(color: _muted, fontSize: 12.5)),
+      ])),
+      IconButton(onPressed: onCreate,
+        icon: const Icon(Icons.add_circle_rounded, color: _green, size: 32)),
+    ]),
+  ));
+}
