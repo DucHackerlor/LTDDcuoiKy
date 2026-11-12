@@ -875,3 +875,222 @@ class _TripPageState extends State<TripPage> {
                     ),
                     const SizedBox(height: 6),
                     Text(
+                      '${formatDate(trip.start)} – ${formatDate(trip.end)}',
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _overviewInfo(
+                            label: s.tr('Hoạt động', 'Activities'),
+                            value: '${trip.activities.length}',
+                            emoji: '📝',
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _overviewInfo(
+                            label: s.tr('Đồ dùng', 'Packing'),
+                            value: '$packedDone/$packedTotal',
+                            emoji: '🎒',
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _overviewInfo(
+                            label: s.tr('Tiến độ', 'Progress'),
+                            value: '${(packedProgress * 100).round()}%',
+                            emoji: '🚀',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SegmentedButton<int>(
+                showSelectedIcon: false,
+                segments: [
+                  ButtonSegment(
+                    value: 0,
+                    icon: const Icon(Icons.calendar_today_outlined),
+                    label: Text(s.tr('Lịch trình', 'Itinerary')),
+                  ),
+                  ButtonSegment(
+                    value: 1,
+                    icon: const Icon(Icons.checklist_outlined),
+                    label: Text(s.tr('Đồ chuẩn bị', 'Packing')),
+                  ),
+                  ButtonSegment(
+                    value: 2,
+                    icon: const Icon(Icons.payments_outlined),
+                    label: Text(s.tr('Dự kiến', 'Budget')),
+                  ),
+                ],
+                selected: {section},
+                onSelectionChanged: (x) => setState(() => section = x.first),
+                ),
+              ),
+              const SizedBox(height: 18),
+              if (section == 0) ...[
+                SizedBox(
+                  height: 48,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: trip.dayCount,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (_, i) {
+                      final d = dateOnly(trip.start).add(Duration(days: i));
+                      return ChoiceChip(
+                        label: Text('${s.tr('Ngày', 'Day')} ${i + 1} · ${d.day}/${d.month}'),
+                        selected: sameDay(d, day),
+                        onSelected: (_) => setState(() => day = d),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 14),
+                if (events.isEmpty)
+                  EmptyCard(text: s.tr('Chưa có hoạt động trong ngày này.', 'No activities on this day.')),
+                ...events.map(
+                  (e) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _ActivityCard(
+                      store: s,
+                      activity: e,
+                      onTap: () async {
+                        await showActivityEditor(context, s, trip, day, existing: e);
+                        if (mounted) setState(() {});
+                      },
+                      onDelete: () async {
+                        if (await askDelete(context, s)) {
+                          trip.activities.removeWhere((x) => x.id == e.id);
+                          await s.persist();
+                          if (mounted) setState(() {});
+                        }
+                      },
+                    ),
+                  ),
+                ),
+              ] else if (section == 1) ...[
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              '${s.tr('Tiến độ chuẩn bị', 'Packing progress')}${packedTotal > 0 && packedDone == packedTotal ? ' 🎉' : ''}',
+                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: ink),
+                            ),
+                            const Spacer(),
+                            Text(
+                              '$packedDone/$packedTotal',
+                              style: const TextStyle(color: muted, fontWeight: FontWeight.w700),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: LinearProgressIndicator(
+                            minHeight: 10,
+                            value: packedProgress,
+                            backgroundColor: const Color(0xFFEDF5EF),
+                            valueColor: const AlwaysStoppedAnimation<Color>(primaryTeal),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          s.tr(
+                            'Đánh dấu các món đồ đã chuẩn bị để theo dõi thuận tiện hơn.',
+                            'Mark completed items to track your preparation progress.',
+                          ),
+                          style: const TextStyle(color: muted),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (trip.packing.isEmpty)
+                  EmptyCard(text: s.tr('Chưa có đồ cần chuẩn bị.', 'No items to pack yet.')),
+                ...trip.packing.map(
+                  (item) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Card(
+                      child: CheckboxListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        value: item.done,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                        title: Text(
+                          item.name,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            decoration: item.done ? TextDecoration.lineThrough : null,
+                            color: item.done ? muted : ink,
+                          ),
+                        ),
+                        subtitle: Text(item.done ? s.tr('Đã chuẩn bị', 'Packed') : s.tr('Chưa chuẩn bị', 'Not packed')),
+                        onChanged: (x) {
+                          setState(() => item.done = x ?? false);
+                          s.persist();
+                        },
+                        secondary: IconButton(
+                          tooltip: s.tr('Xóa', 'Delete'),
+                          icon: const Icon(Icons.close),
+                          onPressed: () {
+                            setState(() => trip.packing.removeWhere((x) => x.id == item.id));
+                            s.persist();
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ] else ...[
+                TripBudgetView(store: s, trip: trip),
+              ],
+            ],
+          ),
+        ),
+      ),
+      floatingActionButton: section == 2 ? null : FloatingActionButton.extended(
+        icon: const Icon(Icons.add),
+        label: Text(section == 0 ? s.tr('Thêm hoạt động', 'Add activity') : s.tr('Thêm đồ dùng', 'Add item')),
+        onPressed: () async {
+          if (section == 0) {
+            await showActivityEditor(context, s, trip, day);
+          } else {
+            await showPackingEditor(context, s, trip);
+          }
+          if (mounted) setState(() {});
+        },
+      ),
+    );
+  }
+
+  Widget _overviewInfo({required String label, required String value, required String emoji}) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withAlpha(46),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 22, height: 1)),
+            const SizedBox(height: 6),
+            Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18)),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w600),
