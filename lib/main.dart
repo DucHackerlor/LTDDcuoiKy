@@ -217,3 +217,223 @@ class PageWidth extends StatelessWidget {
 
 class HomePage extends StatefulWidget {
   final TripStore store;
+  const HomePage({super.key, required this.store});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  int tab = 0;
+  String query = '';
+  int tripFilter = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.store;
+    return Scaffold(
+      appBar: AppBar(
+        title: Row(
+          children: [
+            Transform.rotate(
+              angle: -.1,
+              child: Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF1FD18A), deepTeal],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: const [
+                    BoxShadow(color: Color(0x5506A65F), blurRadius: 10, offset: Offset(0, 4)),
+                  ],
+                ),
+                child: const Icon(Icons.flight_takeoff_rounded, color: Colors.white),
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text('TravelMate', style: TextStyle(fontWeight: FontWeight.w900)),
+            const SizedBox(width: 6),
+            const Text('🌴', style: TextStyle(fontSize: 20)),
+          ],
+        ),
+        actions: const [],
+      ),
+      body: SafeArea(
+        child: PageWidth(child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 220),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          child: KeyedSubtree(
+            key: ValueKey(tab),
+            child: tab == 0
+                ? DashboardPage(
+                    store: s,
+                    onCreate: () => showTripEditor(context, s),
+                    onTrips: () => setState(() => tab = 1),
+                    onExplore: () => setState(() => tab = 2),
+                    onOpenTrip: (trip) => Navigator.push(context,
+                      MaterialPageRoute<void>(builder: (_) => TripPage(store: s, trip: trip))),
+                  )
+                : tab == 1
+                    ? _trips(s)
+                    : tab == 2
+                        ? DiscoverPage(store: s, onCreated: () => setState(() => tab = 1))
+                        : ProfilePage(
+                            store: s,
+                            onTeam: () => Navigator.push(context,
+                              MaterialPageRoute<void>(builder: (_) => TeamPage(store: s))),
+                          ),
+          ),
+        )),
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+          child: Material(
+            elevation: 10,
+            shadowColor: const Color(0x4406A65F),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(30),
+            clipBehavior: Clip.antiAlias,
+            child: NavigationBar(
+              selectedIndex: tab,
+              onDestinationSelected: (x) => setState(() => tab = x),
+              destinations: [
+                NavigationDestination(
+                  icon: const Icon(Icons.home_outlined),
+                  selectedIcon: const Icon(Icons.home_rounded),
+                  label: s.tr('Trang chủ', 'Home'),
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.luggage_outlined),
+                  selectedIcon: const Icon(Icons.luggage_rounded),
+                  label: s.tr('Chuyến đi', 'Trips'),
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.explore_outlined),
+                  selectedIcon: const Icon(Icons.explore),
+                  label: s.tr('Khám phá', 'Explore'),
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.face_outlined),
+                  selectedIcon: const Icon(Icons.face_rounded),
+                  label: s.tr('Tài khoản', 'Account'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      floatingActionButton: tab == 1
+          ? FloatingActionButton.extended(
+              onPressed: () => showTripEditor(context, s),
+              icon: const Icon(Icons.add),
+              label: Text(s.tr('Tạo chuyến đi', 'New trip')),
+            )
+          : null,
+    );
+  }
+
+  Widget _trips(TripStore s) => ListView(
+        padding: const EdgeInsets.fromLTRB(18, 10, 18, 110),
+        children: [
+          const SizedBox(height: 22),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      s.tr('Hành trình của bạn 🧳', 'Your journeys 🧳'),
+                      style: const TextStyle(
+                        fontSize: 22,
+                        color: ink,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      s.tr(
+                        'Theo dõi và sắp xếp mọi chuyến đi một cách gọn gàng.',
+                        'Keep all your trips organized in one place.',
+                      ),
+                      style: const TextStyle(color: muted),
+                    ),
+                  ],
+                ),
+              ),
+              Chip(
+                backgroundColor: sunSoft,
+                side: BorderSide.none,
+                label: Text('${s.tr('Tổng', 'Total')}: ${s.trips.length}'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            onChanged: (text) => setState(() => query = text.trim().toLowerCase()),
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search_rounded, color: primaryTeal),
+              hintText: s.tr('Tìm tên chuyến đi hoặc điểm đến...', 'Search trip name or destination...'),
+              filled: true,
+              fillColor: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            ChoiceChip(label: Text(s.tr('Tất cả', 'All')), selected: tripFilter == 0,
+              onSelected: (_) => setState(() => tripFilter = 0)),
+            ChoiceChip(label: Text(s.tr('Sắp tới', 'Upcoming')), selected: tripFilter == 1,
+              onSelected: (_) => setState(() => tripFilter = 1)),
+            ChoiceChip(label: Text(s.tr('Đã qua', 'Past')), selected: tripFilter == 2,
+              onSelected: (_) => setState(() => tripFilter = 2)),
+          ]),
+          const SizedBox(height: 16),
+          if (s.error != null) ErrorStrip(message: s.error!),
+          if (s.trips.isEmpty)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  children: [
+                    const EmojiBadge(emoji: '🧳', size: 88, color: sunSoft, angle: -.08),
+                    const SizedBox(height: 16),
+                    Text(
+                      s.tr('Chưa có hành trình nào', 'No journeys yet'),
+                      style: const TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      s.tr(
+                        'Nhấn “Tạo chuyến đi” để bắt đầu lên kế hoạch cho hành trình đầu tiên.',
+                        'Tap “New trip” to start planning your first adventure.',
+                      ),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: muted),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          if (s.trips.isNotEmpty)
+            Builder(builder: (context) {
+              final now = dateOnly(DateTime.now());
+              final matches = s.trips.where((trip) {
+                final nameMatch = '${trip.name} ${trip.destination}'.toLowerCase().contains(query);
+                final dateMatch = tripFilter == 0 ||
+                  (tripFilter == 1 && !dateOnly(trip.end).isBefore(now)) ||
+                  (tripFilter == 2 && dateOnly(trip.end).isBefore(now));
+                return nameMatch && dateMatch;
+              }).toList()..sort((a,b) => a.start.compareTo(b.start));
+              if (matches.isEmpty) {
+                return EmptyCard(text: s.tr('Không tìm thấy chuyến đi phù hợp.',
+                  'No matching trips found.'));
+              }
+              return LayoutBuilder(builder: (context, constraints) {
+                final wide = constraints.maxWidth >= 700;
